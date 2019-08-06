@@ -5,7 +5,9 @@ RUN apk add --update --upgrade --no-cache jq bash curl
 
 ENV KUBERNETES_VERSION 1.14.3
 RUN curl -L -o /usr/local/bin/kubectl https://storage.googleapis.com/kubernetes-release/release/v${KUBERNETES_VERSION}/bin/linux/amd64/kubectl; \
-  chmod +x /usr/local/bin/kubectl
+  chmod +x /usr/local/bin/kubectl \
+    && curl -L -o /usr/local/bin/helmfile https://github.com/roboll/helmfile/releases/download/v${HELMFILE_LATEST_VERSION}/helmfile_linux_amd64curl -LO  https://github.com/roboll/helmfile/releases/download/v${HELMFILE_LATEST_VERSION}/helmfile_linux_amd64; \
+    chmod +x /usr/local/bin/helmfile
 
 ADD assets /opt/resource
 RUN chmod +x /opt/resource/*

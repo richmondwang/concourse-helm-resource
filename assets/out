@@ -46,6 +46,11 @@ wait=$(jq -r '.params.wait // 0' < $payload)
 check_is_ready=$(jq -r '.params.check_is_ready // "false"' < $payload)
 kubeconfig_namespace=$(jq -r '.source.kubeconfig_namespace // "false"' < $payload)
 
+# helmfile params
+helmfile=$(jq -r '.params.helmfile // ""' < $payload)
+environment=$(jq -r '.params.environment // ""' < $payload)
+stat_values_file=$(jq -r '.params.state_values_file // ""' < $payload)
+
 if [ -z "$chart" ]; then
   if [[ "$test" == "false" && "$delete" == "false" ]]; then
     echo "invalid payload (missing chart)"
@@ -278,6 +283,27 @@ wait_ready_notice() {
   fi
 }
 
+helmfile_apply() {}
+helmfile_delete() {}
+helmfile_destroy() {}
+
+helmfile_apply() {
+  apply_args=("apply" "--file" "$helmfile" "--suppress-secrets")
+  if [ -n "$environment" ]; then
+    apply_args+=("--environment" "$environment")
+  fi
+
+  if [ -n "$namespace" ]; then
+    apply_args+=("--namespace" "$namespace")
+  fi
+
+  if [ -n "$values" ]; then
+    apply_args+=("--values" "$values")
+  fi
+
+  helmfile "${apply_args[@]}" | tee $logfile
+}
+
 
 if [ "$delete" = true ]; then
   helm_delete
@@ -286,6 +312,19 @@ if [ "$delete" = true ]; then
 elif [ "$test" = true ]; then
   helm_test
   result="$(jq -n "{version:{release:\"$release\", tested: \"true\"}, metadata: [{name: \"release\", value: \"$release\"}]}")"
+  echo "$result" | jq -s add  >&3
+elif [ -n "$helmfile" ]; then
+  helmfile_apply
+
+  if [ "$release" = "" ]; then
+    release=$(helm ls -qrd --tiller-namespace $tiller_namespace --max 20 | head -1)
+  fi
+  deployed=$(current_deployed "$release")
+  revision=$(echo $deployed | awk '{ print $1 }')
+  chart=$(echo $deployed | awk '{ print $8 }')
+  echo "Deployed revision $revision of $release"
+  wait_ready_notice
+  result="$(jq -n "{version:{release:\"$release\", revision:\"$revision\"}, metadata: [{name: \"release\", value: \"$release\"},{name: \"revision\", value: \"$revision\"},{name: \"chart\", value: \"$chart\"}]}")"
   echo "$result" | jq -s add  >&3
 else
   echo "Installing $release"
