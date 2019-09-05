@@ -318,7 +318,7 @@ helmfile_apply() {
     apply_args+=("--selector" "$selector")
   fi
   
-  apply_args+=("apply" "--suppress-secrets")
+  apply_args+=("sync")
 
   if [ -n "$values" ]; then
     apply_args+=("--values" "$values")
