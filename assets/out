@@ -315,7 +315,10 @@ helmfile_apply() {
   fi
 
   if [ -n "$selector" ]; then
-    apply_args+=("--selector" "$selector")
+    IFS=' ' read -r -a selectors <<< "${selector}"
+    for sel in "${selectors[@]}"; do
+      apply_args+=("--selector" "$sel")
+    done
   fi
   
   apply_args+=("sync")
